@@ -1,0 +1,15 @@
+ggplot(temp, aes(x=RBS_total, y=dynRPI, colour = group), rm.na = TRUE) + 
+  geom_point(shape=1) +
+  scale_colour_hue(l=50) +
+  labs(x = "RBS-R Total Score", #"Restricted Interests subscale of RBS-R", 
+       y = "Repetitive Preference Index (RPI)")+# Use a slightly darker palette than normal
+  geom_smooth(method=lm,   # Add linear regression lines
+              #se=FALSE,    # Don't add shaded confidence region
+              fullrange=TRUE) # Extend regression lines
+
+ggsave("RPI.RBS.RI.pdf")
+
+
+# correlation analysis
+temp <- rawdata[rawdata$dynRPI<0.7, ]
+corr(temp$dynRPI, temp$RBS_Rstintrst)
