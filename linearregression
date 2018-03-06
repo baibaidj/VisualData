@@ -1,0 +1,10 @@
+# outlier 
+fit <- lm(dynRPI ~ RBS_SelfInjure, data = rawdata[rawdata$group==1,])  # RBS_Rstintrst SelfInjure  RBS_Complu
+ # [rawdata$group==1,]
+
+plot(rawdata$RBS_SelfInjure, rawdata$dynRPI, 
+     xlab = "RBS-Restricted Interests",
+     ylab = "RPI")
+lines(rawdata$RBS_SelfInjure, fitted(fit))
+outlierTest(fit)
+ rawdata$RBS_Rstintrst = as.numeric(rawdata$RBS_Rstintrst)
