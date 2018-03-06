@@ -1,0 +1,22 @@
+# cronbach alphas
+temp <- rawdata[,8:15]
+psy::cronbach(temp)
+
+dynwide <- spread(rawdata[, c(1:3,13)], mvname, dynRPI)
+dynlpha <- psych::alpha(dynwide[, c(3:10)])
+# inter-item correlation for the 8 cartoons
+library(corrr)
+stawide[, c(3:10)] %>% correlate()
+inter_item <- stawide[, c(3:10)] %>% correlate() %>% select(-rowname) %>% colMeans(na.rm = TRUE)
+inter_item
+mean(inter_item)
+
+# item-total correlation
+stawide$rpi <- rowMeans(stawide[,c(3:10)])
+item_total <- stawide[c(1:20), c(3:11)] %>% correlate() %>% focus(rpi)
+mean(item_total$rpi)
+
+## correlation between RPI and other measures
+
+corr_coef <- round(cor(rawdata$dynRPI, rawdata$age), digits = 4)
+cor.test(rawdata$dynRPI, rawdata$age, method = "pearson", conf.level = 0.95)
