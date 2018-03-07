@@ -1,4 +1,12 @@
-# cronbach alphas
+
+## correlation between RPI and other measures
+library(psych)
+corr_coef<-corr.test(temp[temp$group == 2,3:12], method = "pearson") # spearman
+print(corr_coef, digits=4)
+
+
+
+# cronbach alphas, reliability test
 temp <- rawdata[,8:15]
 psy::cronbach(temp)
 
@@ -15,8 +23,3 @@ mean(inter_item)
 stawide$rpi <- rowMeans(stawide[,c(3:10)])
 item_total <- stawide[c(1:20), c(3:11)] %>% correlate() %>% focus(rpi)
 mean(item_total$rpi)
-
-## correlation between RPI and other measures
-
-corr_coef <- round(cor(rawdata$dynRPI, rawdata$age), digits = 4)
-cor.test(rawdata$dynRPI, rawdata$age, method = "pearson", conf.level = 0.95)
