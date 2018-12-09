@@ -61,12 +61,14 @@ summarySE <- function(data=NULL, measurevar, groupvars=NULL, na.rm=FALSE,
 assignBodyPart <- function(data_frame){
   data_frame$bodypart <- NA
   eye_brain <- tolower(c("eye","Eye_L", "Eye_R", "lens", "Lens_L", "Lens_R", "opticnerve","OpticNerve_L", 
-                         "OpticNerve_R", "temporallobe","TemporalLobe_L", "TemporalLobe_R"))
+                         "OpticNerve_R", "temporallobe","TemporalLobe_L", "TemporalLobe_R", "Cochlea_L",
+                         "Cochlea_R", 'BrainStem'))
   headgland <- tolower(c("Parotid", "Parotid_L", "Parotid_R", "Pituitary", "Thyroid"))
-  thoracic <- tolower(c("lung", "Lung_L", "Lung_R", "Trachea", "Heart", "Esophagus",
+  thoracic <- tolower(c("lung", "Lung_L", "Lung_R", "Trachea", "Heart", "Esophagus","pulmonary",
                         "Atrium_L", "Atrium_R", "Ventricle_L", "Ventricle_R"))
-  abdomen <- tolower(c("kidney", "Kidney_L", "Kidney_R", "Liver",  "Spleen"))
-  pelvis <-tolower(c("Bladder", "Rectum","FemoralHead_L", "FemoralHead_R", "pelvis"))
+  abdomen <- tolower(c("kidney", "Kidney_L", "Kidney_R", "Liver",  "Spleen", "Stomach"))
+  pelvis <-tolower(c("Bladder", "Rectum","FemoralHead_L", "FemoralHead_R", "pelvis", 
+                     "Femur_L", "Femur_R", "PelvicBone"))
   longorgan <- tolower(c( "Body",  "SpinalCord"))
   for (i in 1:dim(data_frame)[1]){
     if(tolower(data_frame$organs[i]) %in% eye_brain){
@@ -90,4 +92,16 @@ assignBodyPart <- function(data_frame){
                               levels = c(0:5),
                               labels = bodypart_name)
   return(data_frame)
+}
+
+
+# calculate the descriptive statistics of a metric, including mean, standard deviation, and standard error 
+metricStat <- function(dataframe, target_metric, groupsvars, valid_range){
+  metricdata_valid = dataframe[!is.na(dataframe[target_metric])& 
+                                 dataframe[target_metric]>=valid_range[1] &
+                                 dataframe[target_metric]<=valid_range[2],]
+  print(dim(metricdata_valid)) #colnames(metricdata_valid)
+  metric_by_groups <- summarySE(metricdata_valid, measurevar=target_metric, groupvars=groupsvars) #"z_spacing",
+  write.csv(metric_by_groups, file = paste(target_metric, 'by', paste(groupsvars, collapse = '.'), 'csv', sep = '.'))
+  return(metric_by_groups)
 }
