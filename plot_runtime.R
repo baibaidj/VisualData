@@ -9,101 +9,86 @@ source("plot_mate.R")
 ##=================================================================================##
 this.dir <- dirname(parent.frame(2)$ofile)
 
-data_dir = "/media/dejun/holder/datavisualizeR/data/18.12.10"
+data_dir = "/media/dejun/holder/algtest/info_board/1.1.2"
 setwd(data_dir)
-# source("plot_model_accuracy.R")
+version = c('1.1.2')
+runtime_file_name = c('segment_runtime')
 
-# first_category_name = list.files(data_dir, pattern = 'time.xlsx')
-# dir = paste(data_dir,first_category_name,sep="/")
-# n = length(dir)
+file_path = paste(data_dir, paste(version, runtime_file_name, 'csv', sep = '.'), sep = '/')
+runtime_data <- read.csv(file_path)
+num_col = dim(runtime_data)[2]
+runtime_valid <- runtime_data[,-c(1,2,5,num_col-1, num_col)]
 
-# read data from several xlsx files into one data frame
-##initialize an df object for later use
-# timedata_one <- data.frame(ot= character(0), organs= character(0),
-#                            operation = character(0), pid = character(0),
-#                            time = numeric(0), hosp = character(0), bodypart = character(0))
-# for(i in 1:n){
-#   ##split a string by certain sign
-#   dir_name = strsplit(first_category_name[i], '[_]')
-#   ##when calling, remember using double []
-#   hosp_name = dir_name[[1]][1]
-#   bodypart_name = strsplit(dir_name[[1]][2], '[.]')[[1]][1]
-#   ##using paste two concatenate several string to make a path
-#   new_1<-read_xlsx(dir[i])
-#   print(dir[i])
-#   print(dim(new_1))
-# 
-#   ##choose part of a df
-#   new_1 <- subset(new_1, select=-c(average,standard))
-# 
-#   ##a way to add new variables to a df
-#   new_col = c("organs", "operation", "hosp", "bodypart")
-#   new_1[, new_col] <- NA
-# 
-#   ##assign values to a variable for all samples
-#   new_1$hosp = hosp_name
-#   new_1$bodypart = bodypart_name
-# 
-#   for (j in 1:dim(new_1)[1]){
-#     phrase_split = strsplit(toString(new_1[j,1]), '[_]')[[1]]
-#     new_1$organs[j] = paste(phrase_split[1:length(phrase_split)-1], collapse = '')
-#     new_1$operation[j] = phrase_split[length(phrase_split)]
-#   }
-#   stlong <- gather(new_1, pid, time, c(2:(dim(new_1)[2]-4)))
-#   timedata_one <- rbind(timedata_one,  stlong)
-# }
-# 
-# time_data <- assignBodyPart(timedata_one)
-# time_data[time_data$operation=='TotalTime-ClassifyTime', 'operation'] = 'SegmentTime'
-# write.csv(time_data, file = 'operation.time.detail.csv')
+# extract roi name in the algorithm file name with a pattern get_xxx_contour.py
+roi_in_alg_file <- function(alg_file){
+  phrase_dot = unlist(strsplit(as.character(alg_file), "[.]"))[1]
+  phrase_underscore = unlist(strsplit(phrase_dot, '[_]'))
+  num_words = length(phrase_underscore)
+  roi_name = paste(phrase_underscore[2:(num_words-1)], collapse = '') #, sep = '_'
+  return(roi_name)
+}
 
-file_path = paste(data_dir, 'operation.time.detail.csv', sep = '/')
-stat_by_group <- read.csv(file_path)
+runtime_valid$pred_rois <- sapply(as.character(runtime_valid$pred_rois), 
+                                  function(x) roi_in_alg_file(x))
+
+runtime_valid$pred_rois[runtime_valid$pred_rois=='AscendensArchDescendens'] <- 'aorta'
+
+# a = runtime_valid$pred_rois[3]
+# wide format to long format
+runtime_long <- gather(runtime_valid, operation, duration, ClassifyTime:PredictTime) 
+runtime_long_valid <- runtime_long[(!is.na(runtime_long$duration) & (runtime_long$duration != -1)), ]
+
 
 # calculate the descriptive statistic of operation time in each step of all algorithms
-target_metric = 'time'
-groupsvars = c("organs", "operation")
+target_metric = 'duration'
+groupsvars = c("pred_rois", "operation")
 valid_range = c(0,500)
-stat_by_group = metricStat(time_data, target_metric, groupsvars, valid_range)
+stat_by_group = metricStat(runtime_long_valid, target_metric, groupsvars, valid_range)
 # names(time_data)[2]<-"thickness"
 # time_data$thickness <- factor(time_data$thickness,
 #                               levels = c(1,3,5),
 #                               labels = c('1mm', '3mm','5mm')
 #                               )
 
-operation_need = c('ClassifyTime', 'SegmentTime')
-operation_no_need = c('TotalTime', 'SegmentTime')
-organ_no_need = c("cochlea", "pulmonaryvessel")
-stat_include = stat_by_group[!(stat_by_group$operation %in% operation_no_need) &
-                              !(stat_by_group$organs %in% organ_no_need), 
-                            ]
-stat_include <- assignBodyPart(stat_include)
+# operation_no_need = c('TotalTime', 'SegmentTime')
+# # organ_no_need = c("cochlea", "pulmonaryvessel")
+# stat_include = stat_by_group[!(stat_by_group$operation %in% operation_no_need)
+#                               # & !(stat_by_group$organs %in% organ_no_need)
+#                              , 
+#                             ]
+stat_include <- assignBodyPart(stat_by_group)
 
 stat_include$operation <- factor(stat_include$operation, levels = 
-                              c('ClassifyTime', 'LoadDataTime', 'PreProcessTime',
-                                'LoadModelTime', 'PredictTime', 'PostProcessTime'), 
-                              labels = c('Classify', 'LoadData', 'PreProcess',
-                                        'LoadModel', 'Predict', 'PostProcess')
+                              c('PostProcessTime','PredictTime', 'LoadModelTime', 
+                                'PreProcessTime','LoadDataTime','ClassifyTime'), 
+                              labels = c( 'PostProcess','Predict','LoadModel', 
+                                        'PreProcess','LoadData', 'Classify')
                               )
+unique_alg = unique(stat_include$pred_rois)
 pd <- position_dodge(0.9)
-ggplot(data = stat_include[stat_include$time_mean>0, ], 
-       aes(x= organs, y=time_mean, fill= operation), na.rm = TRUE)+
+ggplot(data = stat_include[stat_include$duration_mean>0, ], 
+       aes(x= pred_rois, y=duration_mean, fill= operation), na.rm = TRUE)+
   geom_bar(stat="identity") + #position=position_dodge(),
-  # geom_errorbar(aes(ymin=ClassifyTime_Mean-ClassifyTime_Std, ymax=ClassifyTime_Mean+ClassifyTime_Std), width=.1, position=pd)+
-  scale_fill_manual(values = c('#88C542', '#751CEC','#4CB2D4', 
-                               '#F9ED3A', '#F3A530', '#367ABD'))+ 
-  # color in order: green, purple, blue, yellow, organge, navy
+  # scale_fill_brewer(palette="Set1")+
+  ylim(0, 50)+
+  scale_fill_manual(values = c('#367ABD','#F3A530', '#F9ED3A', 
+                                '#4CB2D4','#751CEC','#88C542'
+                               ))+
+  # color in order: #navy, organge, yellow, 
+                    # blue, purple, green
   #, "#88C542","#F0A32F","#30499B" yellow '#F8D14E', blue '#2D9FDB'
   # geom_errorbar(aes(ymin=time_mean-se, ymax=time_mean+se),
   #               position=position_dodge(0.9),
   #               width = .2)+  #size = 1,
-  labs(y = "Running Time")+
+  labs(x = paste('OAR Auto-Contour Algorithms , Version:', version, 
+                 '\n number of algorithms', as.character(length(unique_alg))),
+       y = "Running Time (s)")+
   facet_grid(. ~ bodypart, scales = "free_x", space = "free_x")+
   theme_bw()+
-  theme(axis.title.x = element_text(face="bold", size=16),
-        axis.text.x  = element_text(angle=90, vjust=0.5, size=12),
-        axis.title.y = element_text(face="bold", size=16),
-        axis.text.y  = element_text(angle=0, vjust=0.5, size=12),
+  theme(axis.title.x = element_text(face="bold", size=12),
+        axis.text.x  = element_text(angle=90, vjust=0.5, size=10),
+        axis.title.y = element_text(face="bold", size=12),
+        axis.text.y  = element_text(angle=0, vjust=0.5, size=10),
         panel.grid.major = element_blank(),
         panel.grid.minor = element_blank(),
         panel.background = element_blank(),
@@ -111,38 +96,7 @@ ggplot(data = stat_include[stat_include$time_mean>0, ],
         legend.position="top"
         # legend.justification=c(0.5,0.7)
   )
-ggsave("time_by_operation_organ.pdf")
 
-
-#
-# # ##checking if there are temporallobe and opticnerve in the df
-# # checkdf = timedata_one[timedata_one$organs %in% c("temporallobe", 'opticnerve')]
-# 
-# ##using the value of two variable making another
-# timedata_one = subset(timedata_one, select = -c(X__1))
-# segtime_data = timedata_one[timedata_one$operation %in% c("TotalTime"), ]
-# classtime_data = timedata_one[timedata_one$operation %in% c("TotalTime-ClassifyTime"), ]
-# needdata = timedata_one[timedata_one$operation %in% c("TotalTime","TotalTime-ClassifyTime"), ]
-# spreaddata = spread(needdata, operation, time)
-# names(spreaddata)[5] <- "totaltime"
-# names(spreaddata)[6] <- "classify"
-# spreaddata$segtime <-NA
-# spreaddata$segtime = with(spreaddata, totaltime -classify)
-# spreaddata = subset(spreaddata, select = -c(5))
-# time_data = gather(spreaddata, operation, time, c(5:6))
-# write.csv(time_data, "operationtime_detail.csv")
-# 
-# time_sum_data  = summarySE(time_data[!is.na(time_data$time), ],  measurevar = "time", groupvars = c("organs", "operation"))
-# time_sum_data <- assignBodyPart(time_sum_data)
-# write.csv(time_sum_data, "operationtime_stat.csv")
-
-
-# data_dir = "/media/dejun/holder/datavisualizeR/data/18.11.7_valid"
-# meta_data = read.csv(paste(data_dir, 'metadata.csv', sep = '/'))
-# time_data <- read.csv(paste(data_dir, "dice_by_spacing.csv", sep = "/"))
-# time_data$z_spacing <- NA
-# add spacing to the table
-# for(i in 1:dim(time_data)[1]){
-#   time_data[i, 'z_spacing'] = meta_data[ meta_data[,'patid'] ==time_data[i,'pid'], 'z_spacing']
-# }
+ggsave(paste(version, "runtime_by_operation_organ", "pdf", sep = '.'),
+       width = 9, height = 6, units = "in")
 
