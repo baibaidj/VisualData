@@ -92,7 +92,7 @@ assignBodyPart <- function(data_frame, organ_columns = c('pred_rois')){
   vessels <- tolower(c( "Vertebral.A_L", "Vertebral.A_R", 'CCA',"CCA_L", "CCA_R", "Aorta", "IJV_L", "IJV_R",
                         "BCV_L", "BCV_R", "SVC", "IMA_L", "IMA_R", "IVC", "Subclavian.A_L", "Subclavian.A_R", 
                         "Pulmonary.A", "Pulmonary.V", "IMA", 'vein', 'Vertebral.A','pulmonaryvessel',
-                        'subclavian'
+                        'subclavian', 'Vertebral.A'
                         ))
   
   muscles <- tolower(c( "Sternohyoid.M",  "Scleido.M", 'scleido', 'sternohyoid'))
@@ -147,11 +147,6 @@ AccuracyScatterPlot <- function(dataframe, x_variable, target_metric, colors_on,
   metricdata_valid = dataframe[!is.na(dataframe[target_metric])& 
                                  dataframe[target_metric]>=valid_range[1] &
                                  dataframe[target_metric]<=valid_range[2],]
-  # metricdata_valid = metricdata_valid[!(metricdata_valid$organs=="liver" & metricdata_valid$hosp== "beiyi3"),]
-  # x_variable <- enquo(x_variable)
-  # target_metric <- enquo(target_metric)
-  # colors_on <- enquo(colors_on)
-  # x_group <- enquo(x_group)
   
   ggplot(metricdata_valid, aes_string(x_variable, target_metric))+
     geom_boxplot( outlier.shape = NA, colour = "#3366FF", fill = "white")+
